@@ -7,7 +7,7 @@ version = "0.0.2"
 AbstractAlgebra = "c3fe647b-3220-5bb0-a1ea-a7954cac585d"
 
 [compat]
-AbstractAlgebra = "^0.30.2"
+AbstractAlgebra = "^0.30.2, 0.31"
 julia = "1.9"
 
 [extras]
