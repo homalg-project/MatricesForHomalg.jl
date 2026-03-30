@@ -18,6 +18,8 @@ TypeOfFieldForHomalg = Nemo.Field
 
 TypeOfRingElementForHomalg = Nemo.NCRingElement
 
+include("Declarations.jl")
+
 """
     HomalgRingOfIntegers()
 
@@ -45,6 +47,7 @@ Rational field
 function HomalgFieldOfRationals()::Nemo.QQField
     return Nemo.QQ
 end
+
 
 """
     RingName(ring)
@@ -77,7 +80,7 @@ export HomalgRingOfIntegers, HomalgFieldOfRationals, RingName
 
 ## Constructors of homalg matrices
 
-TypeOfMatrixForHomalg = Nemo.MatrixElem
+TypeOfMatrixForHomalg::Type = Union{Nemo.MatrixElem, Nemo.SetElem}
 
 """
     HomalgMatrix(L, r, c, R)
@@ -831,7 +834,8 @@ end
 
 export HomalgRing, NumberRows, NumberColumns, TransposedMatrix, ConvertMatrixToRow, ConvertMatrixToColumn,
     RowReducedEchelonForm, BasisOfRows, BasisOfColumns, ZeroRows, ZeroColumns, FirstZeroRow, FirstZeroColumn,
-    SyzygiesOfRows, SyzygiesOfColumns, RowRankOfMatrix, ColumnRankOfMatrix, StringDisplay
+    SyzygiesOfRows, SyzygiesOfColumns, RowRankOfMatrix, ColumnRankOfMatrix, StringDisplay,
+    ReducedSyzygiesOfRows, ReducedSyzygiesOfColumns
 
 ## Operations of homalg matrices
 
@@ -1649,6 +1653,76 @@ julia> SyzygiesOfColumns(A, N)
 """
 function SyzygiesOfColumns(A, N)
     return TransposedMatrix(SyzygiesOfRows(TransposedMatrix(A), TransposedMatrix(N)))
+end
+
+## ReducedSyzygiesOfRows / ReducedSyzygiesOfColumns
+
+"""
+    ReducedSyzygiesOfRows(M)
+
+Return the reduced row syzygies of M, i.e. a matrix S with
+reduced rows satisfying S * M = 0.
+
+```jldoctest
+julia> A = HomalgMatrix(4:9, 3, 2, ZZ)
+[4   5]
+[6   7]
+[8   9]
+
+julia> S = ReducedSyzygiesOfRows(A)
+[1   -2   1]
+
+julia> S * A
+[0   0]
+```
+"""
+function ReducedSyzygiesOfRows(M)
+    return BasisOfRows(SyzygiesOfRows(M))
+end
+
+"""
+    ReducedSyzygiesOfRows(M, M2)
+
+Return the reduced relative row syzygies of M modulo M2,
+i.e. a matrix K with reduced rows satisfying K * M + L * M2 = 0 for some L.
+"""
+function ReducedSyzygiesOfRows(M, M2)
+    return BasisOfRows(SyzygiesOfRows(M, M2))
+end
+
+"""
+    ReducedSyzygiesOfColumns(M)
+
+Return the reduced column syzygies of M, i.e. a matrix S with
+reduced columns satisfying M * S = 0.
+
+```jldoctest
+julia> A = TransposedMatrix(HomalgMatrix(4:9, 3, 2, ZZ))
+[4   6   8]
+[5   7   9]
+
+julia> S = ReducedSyzygiesOfColumns(A)
+[ 1]
+[-2]
+[ 1]
+
+julia> A * S
+[0]
+[0]
+```
+"""
+function ReducedSyzygiesOfColumns(M)
+    return TransposedMatrix(ReducedSyzygiesOfRows(TransposedMatrix(M)))
+end
+
+"""
+    ReducedSyzygiesOfColumns(M, M2)
+
+Return the reduced relative column syzygies of M modulo M2,
+i.e. a matrix K with reduced columns satisfying M * K + M2 * L = 0 for some L.
+"""
+function ReducedSyzygiesOfColumns(M, M2)
+    return TransposedMatrix(ReducedSyzygiesOfRows(TransposedMatrix(M), TransposedMatrix(M2)))
 end
 
 export UnionOfRows, UnionOfColumns, KroneckerMat, CertainColumns, CertainRows,
