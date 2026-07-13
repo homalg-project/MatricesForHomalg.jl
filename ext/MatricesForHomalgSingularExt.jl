@@ -1399,4 +1399,20 @@ function MatricesForHomalg.ReducedSyzygiesOfRows(A::Singular.smatrix, N::Singula
     return Singular.transpose(MatricesForHomalg.ReducedSyzygiesOfColumns(Singular.transpose(A), Singular.transpose(N)))
 end
 
+## Ring membership for Singular polynomial rings
+#
+# In GAP, `r in Ring` checks if r is an element of Ring. Julia's generic `in`
+# tries to iterate over the collection, which fails for Singular.PolyRing.
+# We define explicit Base.in methods to match GAP semantics.
+
+# A Singular polynomial belongs to R if it comes from that same ring
+function Base.in(x::Singular.spoly{T}, R::Singular.PolyRing{T}) where T
+    Singular.base_ring(x) === R
+end
+
+# Integers and rationals can always be coerced into any polynomial ring
+function Base.in(x::Union{Integer, Rational, AbstractFloat}, R::Singular.PolyRing)
+    true
+end
+
 end # module
