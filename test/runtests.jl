@@ -1,4 +1,5 @@
 using MatricesForHomalg
+import Nemo
 using Test
 using Documenter
 
@@ -9,3 +10,4 @@ include("properties.jl")
 include("attributes.jl")
 include("operations.jl")
 include("testmanual.jl")
+include("singular-ext-test.jl")

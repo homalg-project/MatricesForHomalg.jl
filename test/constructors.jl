@@ -31,4 +31,12 @@
     @test NumberRows(diagonalmat) == 5
     @test NumberColumns(diagonalmat) == 5
 
+    m_zz = RandomMatrix(2, 3, ZZ)
+    @test NumberRows(m_zz) == 2
+    @test NumberColumns(m_zz) == 3
+
+    m_qq = RandomMatrix(2, 3, QQ)
+    @test NumberRows(m_qq) == 2
+    @test NumberColumns(m_qq) == 3
+
 end

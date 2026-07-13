@@ -33,4 +33,10 @@
     @test IsSymmetricMatrix(mat) == false
     @test IsSymmetricMatrix(symmetricmat) == true
 
+    @test HasHasInvariantBasisProperty(ZZ) == true
+    @test HasHasInvariantBasisProperty(QQ) == true
+    @test HasInvariantBasisProperty(ZZ) == true
+    @test HasInvariantBasisProperty(QQ) == true
+    @test HasHasInvariantBasisProperty(Nemo.residue_ring(ZZ, 5)[1]) == false
+
 end
