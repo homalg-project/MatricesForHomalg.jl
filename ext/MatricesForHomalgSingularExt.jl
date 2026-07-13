@@ -345,7 +345,12 @@ julia> HomalgIdentityMatrix(2, R)
 ```
 """
 function MatricesForHomalg.HomalgIdentityMatrix(r, R::Singular.PolyRing)
-    return Singular.identity_matrix(R, Int(r))
+    n = Int(r)
+    # Singular.identity_matrix segfaults for n=0; return a zero matrix instead
+    if n == 0
+        return Singular.zero_matrix(R, 0, 0)
+    end
+    return Singular.identity_matrix(R, n)
 end
 
 ## RandomMatrix for Singular rings
@@ -1042,6 +1047,14 @@ julia> SafeLeftDivide(A, B)
 ```
 """
 function MatricesForHomalg.SafeLeftDivide(A::Singular.smatrix, B::Singular.smatrix)
+    R = Singular.base_ring(A)
+    # Singular.lift misbehaves for rank-0 modules (0-row A or 0-column B).
+    # If A has 0 rows: system A*X=B has 0 equations → trivial solution X=0
+    # If B has 0 cols: system A*X=B with B empty → solution X must also be empty
+    # In both cases X has shape ncols(A) × ncols(B).
+    if Singular.nrows(A) == 0 || Singular.ncols(B) == 0
+        return Singular.zero_matrix(R, Singular.ncols(A), Singular.ncols(B))
+    end
     M_A = Singular.Module(A)
     M_B = Singular.Module(B)
     T, rest = Singular.lift(M_A, M_B)
@@ -1299,10 +1312,14 @@ true
 ```
 """
 function MatricesForHomalg.ReducedSyzygiesOfColumns(A::Singular.smatrix)
+    R = Singular.base_ring(A)
+    # Singular.syz is buggy for rank-0 modules; handle the trivial case explicitly
+    if Singular.ncols(A) == 0
+        return Singular.zero_matrix(R, Singular.ncols(A), 0)
+    end
     M = Singular.Module(A)
     S = Singular.syz(M)
     if Singular.iszero(S)
-        R = Singular.base_ring(A)
         return Singular.zero_matrix(R, Singular.ncols(A), 0)
     end
     G = Singular.std(S; complete_reduction=true)
@@ -1352,11 +1369,15 @@ julia> ReducedSyzygiesOfColumns(A, N)
 ```
 """
 function MatricesForHomalg.ReducedSyzygiesOfColumns(A::Singular.smatrix, N::Singular.smatrix)
+    R = Singular.base_ring(A)
+    # Singular.modulo is buggy for rank-0 modules; handle the trivial case explicitly
+    if Singular.ncols(A) == 0
+        return Singular.zero_matrix(R, Singular.ncols(A), 0)
+    end
     M_A = Singular.Module(A)
     M_N = Singular.Module(N)
     S = Singular.modulo(M_A, M_N)
     if Singular.iszero(S)
-        R = Singular.base_ring(A)
         return Singular.zero_matrix(R, Singular.ncols(A), 0)
     end
     G = Singular.std(S; complete_reduction=true)
@@ -1384,6 +1405,22 @@ julia> ReducedSyzygiesOfRows(A, N)
 """
 function MatricesForHomalg.ReducedSyzygiesOfRows(A::Singular.smatrix, N::Singular.smatrix)
     return Singular.transpose(MatricesForHomalg.ReducedSyzygiesOfColumns(Singular.transpose(A), Singular.transpose(N)))
+end
+
+## Ring membership for Singular polynomial rings
+#
+# In GAP, `r in Ring` checks if r is an element of Ring. Julia's generic `in`
+# tries to iterate over the collection, which fails for Singular.PolyRing.
+# We define explicit Base.in methods to match GAP semantics.
+
+# A Singular polynomial belongs to R if it comes from that same ring
+function Base.in(x::Singular.spoly{T}, R::Singular.PolyRing{T}) where T
+    Singular.base_ring(x) === R
+end
+
+# Integers and rationals can always be coerced into any polynomial ring
+function Base.in(x::Union{Integer, Rational, AbstractFloat}, R::Singular.PolyRing)
+    true
 end
 
 end # module
