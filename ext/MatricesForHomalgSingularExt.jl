@@ -345,7 +345,12 @@ julia> HomalgIdentityMatrix(2, R)
 ```
 """
 function MatricesForHomalg.HomalgIdentityMatrix(r, R::Singular.PolyRing)
-    return Singular.identity_matrix(R, Int(r))
+    n = Int(r)
+    # Singular.identity_matrix segfaults for n=0; return a zero matrix instead
+    if n == 0
+        return Singular.zero_matrix(R, 0, 0)
+    end
+    return Singular.identity_matrix(R, n)
 end
 
 ## RandomMatrix for Singular rings
