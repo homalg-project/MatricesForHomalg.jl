@@ -1047,6 +1047,14 @@ julia> SafeLeftDivide(A, B)
 ```
 """
 function MatricesForHomalg.SafeLeftDivide(A::Singular.smatrix, B::Singular.smatrix)
+    R = Singular.base_ring(A)
+    # Singular.lift misbehaves for rank-0 modules (0-row A or 0-column B).
+    # If A has 0 rows: system A*X=B has 0 equations → trivial solution X=0
+    # If B has 0 cols: system A*X=B with B empty → solution X must also be empty
+    # In both cases X has shape ncols(A) × ncols(B).
+    if Singular.nrows(A) == 0 || Singular.ncols(B) == 0
+        return Singular.zero_matrix(R, Singular.ncols(A), Singular.ncols(B))
+    end
     M_A = Singular.Module(A)
     M_B = Singular.Module(B)
     T, rest = Singular.lift(M_A, M_B)
