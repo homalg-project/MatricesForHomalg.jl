@@ -1299,10 +1299,14 @@ true
 ```
 """
 function MatricesForHomalg.ReducedSyzygiesOfColumns(A::Singular.smatrix)
+    R = Singular.base_ring(A)
+    # Singular.syz is buggy for rank-0 modules; handle the trivial case explicitly
+    if Singular.ncols(A) == 0
+        return Singular.zero_matrix(R, Singular.ncols(A), 0)
+    end
     M = Singular.Module(A)
     S = Singular.syz(M)
     if Singular.iszero(S)
-        R = Singular.base_ring(A)
         return Singular.zero_matrix(R, Singular.ncols(A), 0)
     end
     G = Singular.std(S; complete_reduction=true)
@@ -1352,11 +1356,15 @@ julia> ReducedSyzygiesOfColumns(A, N)
 ```
 """
 function MatricesForHomalg.ReducedSyzygiesOfColumns(A::Singular.smatrix, N::Singular.smatrix)
+    R = Singular.base_ring(A)
+    # Singular.modulo is buggy for rank-0 modules; handle the trivial case explicitly
+    if Singular.ncols(A) == 0
+        return Singular.zero_matrix(R, Singular.ncols(A), 0)
+    end
     M_A = Singular.Module(A)
     M_N = Singular.Module(N)
     S = Singular.modulo(M_A, M_N)
     if Singular.iszero(S)
-        R = Singular.base_ring(A)
         return Singular.zero_matrix(R, Singular.ncols(A), 0)
     end
     G = Singular.std(S; complete_reduction=true)
