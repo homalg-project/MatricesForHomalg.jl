@@ -848,9 +848,114 @@ function StringDisplay(mat)::String
     string(mat)
 end
 
+function _latex_entry(x::Nemo.ZZRingElem)::String
+    Nemo.iszero(x) && return "\\cdot"
+    return string(x)
+end
+
+function _latex_entry(x::Nemo.QQFieldElem)::String
+    Nemo.iszero(x) && return "\\cdot"
+    d = Nemo.denominator(x)
+    if Nemo.isone(d)
+        return string(Nemo.numerator(x))
+    end
+    n = Nemo.numerator(x)
+    if n < 0
+        return "-\\frac{$(abs(n))}{$(d)}"
+    end
+    return "\\frac{$(n)}{$(d)}"
+end
+
+"""
+    LaTeXOutputOfHomalgRingElement(x)
+
+Return a LaTeX string for the ring element x.
+
+```jldoctest
+julia> LaTeXOutputOfHomalgRingElement(ZZ(0))
+"0"
+
+julia> LaTeXOutputOfHomalgRingElement(ZZ(-3))
+"-3"
+
+julia> LaTeXOutputOfHomalgRingElement(QQ(1, 3))
+"\\\\frac{1}{3}"
+
+julia> LaTeXOutputOfHomalgRingElement(QQ(-1, 4))
+"-\\\\frac{1}{4}"
+```
+"""
+function LaTeXOutputOfHomalgRingElement(x::Nemo.ZZRingElem)::String
+    return string(x)
+end
+
+function LaTeXOutputOfHomalgRingElement(x::Nemo.QQFieldElem)::String
+    d = Nemo.denominator(x)
+    if Nemo.isone(d)
+        return string(Nemo.numerator(x))
+    end
+    n = Nemo.numerator(x)
+    if n < 0
+        return "-\\frac{$(abs(n))}{$(d)}"
+    end
+    return "\\frac{$(n)}{$(d)}"
+end
+
+"""
+    LaTeXOutputOfHomalgRing(R)
+
+Return a LaTeX string for the ring R.
+
+```jldoctest
+julia> LaTeXOutputOfHomalgRing(HomalgRingOfIntegers())
+"\\\\mathbb{Z}"
+
+julia> LaTeXOutputOfHomalgRing(HomalgFieldOfRationals())
+"\\\\mathbb{Q}"
+```
+"""
+function LaTeXOutputOfHomalgRing(::Nemo.ZZRing)::String
+    return "\\mathbb{Z}"
+end
+
+function LaTeXOutputOfHomalgRing(::Nemo.QQField)::String
+    return "\\mathbb{Q}"
+end
+
+"""
+    LaTeXOutputOfHomalgMatrix(mat)
+
+Return a LaTeX string representing the matrix mat as a \\left( \\begin{array} ... \\end{array} \\right) expression.
+
+```jldoctest
+julia> mat = HomalgMatrix([2], 1, 1, QQ)
+[2]
+
+julia> LaTeXOutputOfHomalgMatrix(mat)
+"\\\\left( \\\\begin{array}{r}\\n 2 \\n\\\\end{array} \\\\right)"
+
+julia> mat = HomalgMatrix([[2, QQ(1,3)]], 1, 2, QQ)
+[2   1//3]
+
+julia> LaTeXOutputOfHomalgMatrix(mat)
+"\\\\left( \\\\begin{array}{rr}\\n 2 & \\\\frac{1}{3} \\n\\\\end{array} \\\\right)"
+```
+"""
+function LaTeXOutputOfHomalgMatrix(mat)::String
+    r = NumberRows(mat)
+    c = NumberColumns(mat)
+    col_spec = repeat("r", c)
+    rows_str = join(
+        [ join([_latex_entry(mat[i, j]) for j in 1:c], " & ") for i in 1:r ],
+        " \\\\\n "
+    )
+    return "\\left( \\begin{array}{$(col_spec)}\n $(rows_str) \n\\end{array} \\right)"
+end
+
 export HomalgRing, NumberRows, NumberColumns, TransposedMatrix, ConvertMatrixToRow, ConvertMatrixToColumn,
     RowReducedEchelonForm, BasisOfRows, BasisOfColumns, ZeroRows, ZeroColumns, FirstZeroRow, FirstZeroColumn,
     SyzygiesOfRows, SyzygiesOfColumns, RowRankOfMatrix, ColumnRankOfMatrix, StringDisplay,
+    LaTeXOutputOfHomalgMatrix, LaTeXOutputOfHomalgRing, LaTeXOutputOfHomalgRingElement,
     ReducedSyzygiesOfRows, ReducedSyzygiesOfColumns
 
 ## Operations of homalg matrices
