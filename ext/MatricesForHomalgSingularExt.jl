@@ -1407,6 +1407,163 @@ function MatricesForHomalg.ReducedSyzygiesOfRows(A::Singular.smatrix, N::Singula
     return Singular.transpose(MatricesForHomalg.ReducedSyzygiesOfColumns(Singular.transpose(A), Singular.transpose(N)))
 end
 
+## LaTeX output for Singular rings and matrices
+
+"""
+    LaTeXOutputOfHomalgRing(R::Singular.Integers)
+
+Return `"\\mathbb{Z}"` for the Singular integer ring.
+
+```jldoctest
+julia> using Singular, MatricesForHomalg
+
+julia> LaTeXOutputOfHomalgRing(HomalgRingOfIntegersInSingular())
+"\\mathbb{Z}"
+```
+"""
+function MatricesForHomalg.LaTeXOutputOfHomalgRing(::Singular.Integers)::String
+    return "\\mathbb{Z}"
+end
+
+"""
+    LaTeXOutputOfHomalgRing(R::Singular.Rationals)
+
+Return `"\\mathbb{Q}"` for the Singular rational field.
+
+```jldoctest
+julia> using Singular, MatricesForHomalg
+
+julia> LaTeXOutputOfHomalgRing(HomalgFieldOfRationalsInSingular())
+"\\mathbb{Q}"
+```
+"""
+function MatricesForHomalg.LaTeXOutputOfHomalgRing(::Singular.Rationals)::String
+    return "\\mathbb{Q}"
+end
+
+"""
+    LaTeXOutputOfHomalgRing(R::Singular.PolyRing)
+
+Return a LaTeX string for the Singular polynomial ring R.
+
+```jldoctest
+julia> using Singular, MatricesForHomalg
+
+julia> R, _ = Singular.polynomial_ring(Singular.QQ, ["x", "y"]);
+
+julia> LaTeXOutputOfHomalgRing(R)
+"\\\\mathbb{Q}[x, y]"
+
+julia> S = R / [R("x^2 + y^2 - 1")];
+
+julia> LaTeXOutputOfHomalgRing(S)
+"\\\\mathbb{Q}[x, y] / ( x^2 + y^2 - 1 )"
+```
+"""
+function MatricesForHomalg.LaTeXOutputOfHomalgRing(R::Singular.PolyRing)::String
+    base_latex = LaTeXOutputOfHomalgRing(Singular.base_ring(R))
+    vars = join(map(s -> string(s), R.S), ", ")
+    name = base_latex * "[" * vars * "]"
+    if Singular.is_quotient_ring(R)
+        I = Singular.quotient_ideal(R)
+        rels = join([string(Singular.gens(I)[k]) for k in 1:Singular.ngens(I)], ", ")
+        name *= " / ( " * rels * " )"
+    end
+    return name
+end
+
+function MatricesForHomalg._latex_entry(x::Singular.spoly)::String
+    Singular.iszero(x) && return "\\cdot"
+    return MatricesForHomalg.LaTeXOutputOfHomalgRingElement(x)
+end
+
+# Build a monomial string from variable symbols and exponent vector.
+# Uses ^{n} for exponents > 1, no separator between variables.
+function _latex_monomial(syms::Vector{Symbol}, exps::Vector{Int})::String
+    factors = String[]
+    for (s, e) in zip(syms, exps)
+        e == 0 && continue
+        e == 1 ? push!(factors, string(s)) : push!(factors, "$(s)^{$(e)}")
+    end
+    return join(factors, "")
+end
+
+# Returns (absolute_value_latex, is_negative) for a Singular integer coefficient.
+function _latex_singular_coeff(c::Singular.n_Z)
+    n = BigInt(c)
+    return (string(abs(n)), n < 0)
+end
+
+# Returns (absolute_value_latex, is_negative) for a Singular rational coefficient.
+function _latex_singular_coeff(c::Singular.n_Q)
+    n = BigInt(numerator(c))
+    d = BigInt(denominator(c))
+    neg = n < 0
+    an = abs(n)
+    d == 1 && return (string(an), neg)
+    return ("\\frac{$(an)}{$(d)}", neg)
+end
+
+# Fallback for other coefficient types.
+function _latex_singular_coeff(c)
+    s = string(c)
+    startswith(s, "-") && return (s[2:end], true)
+    return (s, false)
+end
+
+"""
+    LaTeXOutputOfHomalgRingElement(f::Singular.spoly)
+
+Return a LaTeX string for the Singular polynomial f, built from its internal
+term structure: monomials use `^{n}` for exponents, rational coefficients use
+`\\frac`, coefficient ±1 on non-constant monomials is suppressed, and terms
+are joined with ` + ` / ` - `.
+
+```jldoctest
+julia> using Singular, MatricesForHomalg
+
+julia> R, (x, y) = Singular.polynomial_ring(Singular.QQ, ["x", "y"]);
+
+julia> LaTeXOutputOfHomalgRingElement(x^2 + 2*y)
+"x^{2} + 2y"
+
+julia> LaTeXOutputOfHomalgRingElement(QQ(1,3)*x - QQ(1,2)*y^2)
+"\\\\frac{1}{3}x - \\\\frac{1}{2}y^{2}"
+
+julia> LaTeXOutputOfHomalgRingElement(zero(R))
+"0"
+
+julia> LaTeXOutputOfHomalgRingElement(one(R))
+"1"
+```
+"""
+function MatricesForHomalg.LaTeXOutputOfHomalgRingElement(f::Singular.spoly)::String
+    Singular.iszero(f) && return "0"
+    R = parent(f)
+    syms = R.S
+    result = ""
+    first_term = true
+    for (c, exps) in zip(Singular.coefficients(f), Singular.exponent_vectors(f))
+        mon = _latex_monomial(syms, exps)
+        coeff_latex, neg = _latex_singular_coeff(c)
+        is_one = (coeff_latex == "1")
+        term = if isempty(mon)
+            coeff_latex          # constant term: show the absolute coefficient
+        elseif is_one
+            mon                  # coefficient ±1: show only the monomial
+        else
+            coeff_latex * mon    # general: coefficient immediately before monomial
+        end
+        if first_term
+            result = neg ? "-$(term)" : term
+            first_term = false
+        else
+            result *= neg ? " - $(term)" : " + $(term)"
+        end
+    end
+    return result
+end
+
 ## Ring membership for Singular polynomial rings
 #
 # In GAP, `r in Ring` checks if r is an element of Ring. Julia's generic `in`

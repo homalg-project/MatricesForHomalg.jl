@@ -1,6 +1,6 @@
 name = "MatricesForHomalg"
 uuid = "29b9b1b6-efa6-450e-8188-a5a2c25df071"
-version = "0.1.11"
+version = "0.1.12"
 authors = ["Mohamed Barakat <mohamed.barakat@uni-siegen.de>", "Johanna Knecht <johanna.knecht@student.uni-siegen.de>"]
 
 [deps]
