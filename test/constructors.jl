@@ -39,4 +39,14 @@
     @test NumberRows(m_qq) == 2
     @test NumberColumns(m_qq) == 3
 
+    Zx, x = ZZ["x"]
+    f = x^3 + 2*x^2 - 3*x + 5
+    M = CompanionMat(f)
+    @test length(M) == 3
+    @test all(row -> length(row) == 3, M)
+    companionmat = HomalgMatrix(M, 3, 3, ZZ)
+    idmat3 = HomalgIdentityMatrix(3, ZZ)
+    fmat = companionmat^3 + 2*companionmat^2 - 3*companionmat + 5*idmat3
+    @test IsZero(fmat)
+
 end

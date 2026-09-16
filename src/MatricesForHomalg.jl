@@ -1850,4 +1850,44 @@ export UnionOfRows, UnionOfColumns, KroneckerMat, CertainColumns, CertainRows,
     SafeRightDivide, UniqueRightDivide, RightDivide, SafeLeftDivide, UniqueLeftDivide, LeftDivide,
     DecideZeroRows, DecideZeroColumns
 
+"""
+    CompanionMat(f)
+
+Return the companion matrix of the univariate polynomial f as a list of rows,
+each row itself a list of ring elements.
+
+```jldoctest
+julia> Zx, x = ZZ["x"];
+
+julia> f = x^3 + 2*x^2 - 3*x + 5;
+
+julia> M = CompanionMat(f);
+
+julia> M[1] == [ZZ(0), ZZ(0), ZZ(-5)]
+true
+
+julia> M[2] == [ZZ(1), ZZ(0), ZZ(3)]
+true
+
+julia> M[3] == [ZZ(0), ZZ(1), ZZ(-2)]
+true
+```
+"""
+function CompanionMat(f)
+    R = Nemo.base_ring(parent(f))
+    n = Nemo.degree(f)
+
+    M = [[Nemo.zero(R) for _ in 1:n] for _ in 1:n]
+    for i in 1:n-1
+        M[i+1][i] = Nemo.one(R)
+    end
+    for i in 0:n-1
+        M[i+1][n] = -Nemo.coeff(f, i)
+    end
+    return M
 end
+
+export CompanionMat
+
+end
+
