@@ -50,16 +50,22 @@ MatricesForHomalg.HomalgRingOfIntegersInSingular(n::Int) = Singular.residue_ring
     R[s]
 
 Construct the univariate polynomial ring R[s] over the Singular integers or rationals.
+If `s` contains commas, it is split into several variable names and delegated to the
+multivariate constructor, e.g. `R["x,y"]` behaves like `R["x","y"]`.
 
 ```jldoctest
 julia> using Singular, MatricesForHomalg
 
 julia> Singular.ZZ["x"]
 Singular polynomial ring (ZZ),(x),(dp(1),C)
+
+julia> Singular.QQ["x,y"]
+Singular polynomial ring (QQ),(x,y),(dp(2),C)
 ```
 """
 function Base.getindex(R::Union{Singular.Integers, Singular.Rationals}, s::Union{Char, AbstractString, Symbol})
-    return Singular.polynomial_ring(R, [string(s)])[1]
+    names = strip.(split(string(s), ','))
+    return Singular.polynomial_ring(R, string.(names))[1]
 end
 
 """
