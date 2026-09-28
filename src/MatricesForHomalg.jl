@@ -952,10 +952,129 @@ function LaTeXOutputOfHomalgMatrix(mat)::String
     return "\\left( \\begin{array}{$(col_spec)}\n $(rows_str) \n\\end{array} \\right)"
 end
 
+## ViewStringOfHomalgMatrix / DisplayStringOfHomalgMatrix, compatible with the GAP packages RingsForHomalg and MatricesForHomalg
+
+function _is_diagonal_matrix(mat)::Bool
+    r = NumberRows(mat)
+    c = NumberColumns(mat)
+    R = HomalgRing(mat)
+    for i in 1:r, j in 1:c
+        if i != j && !IsZero(HomalgMatrix([mat[i, j]], 1, 1, R))
+            return false
+        end
+    end
+    return true
+end
+
+"""
+    ViewStringOfHomalgMatrix(mat)
+
+Return a short descriptive string for the matrix mat, compatible with the GAP packages RingsForHomalg and MatricesForHomalg.
+
+```jldoctest
+julia> mat = HomalgMatrix(1:6, 2, 3, ZZ)
+[1   2   3]
+[4   5   6]
+
+julia> ViewStringOfHomalgMatrix(mat)
+"<A 2 x 3 matrix over a ring>"
+
+julia> ViewStringOfHomalgMatrix(HomalgIdentityMatrix(3, ZZ))
+"<A 3 x 3 identity matrix over a ring>"
+
+julia> ViewStringOfHomalgMatrix(HomalgZeroMatrix(3, 2, ZZ))
+"<A 3 x 2 zero matrix over a ring>"
+
+julia> ViewStringOfHomalgMatrix(HomalgDiagonalMatrix(1:5, ZZ))
+"<A diagonal 5 x 5 matrix over a ring>"
+```
+"""
+function ViewStringOfHomalgMatrix(mat)::String
+    r = NumberRows(mat)
+    c = NumberColumns(mat)
+
+    kind = ""
+    prefix = ""
+
+    if IsOne(mat)
+        kind = " identity"
+    elseif IsZero(mat)
+        kind = " zero"
+    elseif !(r == 1 && c == 1) && _is_diagonal_matrix(mat)
+        prefix = " diagonal"
+    end
+
+    return "<A$(prefix) $r x $c$(kind) matrix over a ring>"
+end
+
+function _display_entry(x)::String
+    return string(x)
+end
+
+function _display_entry(x::Nemo.QQFieldElem)::String
+    d = Nemo.denominator(x)
+    Nemo.isone(d) && return string(Nemo.numerator(x))
+    return string(Nemo.numerator(x)) * "/" * string(d)
+end
+
+"""
+    DisplayStringOfHomalgMatrix(mat)
+
+Return the multi-line string used to display the matrix mat, compatible with the GAP packages RingsForHomalg and MatricesForHomalg.
+
+```jldoctest
+julia> mat = HomalgMatrix([1,-22,333,4444,5,-6], 2, 3, ZZ);
+
+julia> print(DisplayStringOfHomalgMatrix(mat))
+[ [     1,   -22,   333 ],
+  [  4444,     5,    -6 ] ]
+```
+"""
+function DisplayStringOfHomalgMatrix(mat)::String
+    r = NumberRows(mat)
+    c = NumberColumns(mat)
+
+    if r == 0 || c == 0
+        return "(an empty $r x $c matrix)\n"
+    end
+
+    entries = [[_display_entry(mat[i, j]) for j in 1:c] for i in 1:r]
+    width = maximum(length(s) for row in entries for s in row) + 2
+
+    lines = String[]
+    for i in 1:r
+        row_str = "[" * join([lpad(s, width) for s in entries[i]], ",") * " ]"
+        prefix = i == 1 ? "[ " : "  "
+        suffix = i == r ? " ]" : ","
+        push!(lines, prefix * row_str * suffix)
+    end
+
+    return join(lines, "\n") * "\n"
+end
+
+"""
+    DisplayHomalgMatrix(mat)
+
+Print the matrix mat to `stdout`, compatible with the GAP packages RingsForHomalg and MatricesForHomalg.
+
+```jldoctest
+julia> mat = HomalgMatrix([1,-22,333,4444,5,-6], 2, 3, ZZ);
+
+julia> DisplayHomalgMatrix(mat)
+[ [     1,   -22,   333 ],
+  [  4444,     5,    -6 ] ]
+```
+"""
+function DisplayHomalgMatrix(mat)
+    print(DisplayStringOfHomalgMatrix(mat))
+    return nothing
+end
+
 export HomalgRing, NumberRows, NumberColumns, TransposedMatrix, ConvertMatrixToRow, ConvertMatrixToColumn,
     RowReducedEchelonForm, BasisOfRows, BasisOfColumns, ZeroRows, ZeroColumns, FirstZeroRow, FirstZeroColumn,
     SyzygiesOfRows, SyzygiesOfColumns, RowRankOfMatrix, ColumnRankOfMatrix, StringDisplay,
     LaTeXOutputOfHomalgMatrix, LaTeXOutputOfHomalgRing, LaTeXOutputOfHomalgRingElement,
+    ViewStringOfHomalgMatrix, DisplayStringOfHomalgMatrix, DisplayHomalgMatrix,
     ReducedSyzygiesOfRows, ReducedSyzygiesOfColumns
 
 ## Operations of homalg matrices
@@ -1850,4 +1969,44 @@ export UnionOfRows, UnionOfColumns, KroneckerMat, CertainColumns, CertainRows,
     SafeRightDivide, UniqueRightDivide, RightDivide, SafeLeftDivide, UniqueLeftDivide, LeftDivide,
     DecideZeroRows, DecideZeroColumns
 
+"""
+    CompanionMat(f)
+
+Return the companion matrix of the univariate polynomial f as a list of rows,
+each row itself a list of ring elements.
+
+```jldoctest
+julia> Zx, x = ZZ["x"];
+
+julia> f = x^3 + 2*x^2 - 3*x + 5;
+
+julia> M = CompanionMat(f);
+
+julia> M[1] == [ZZ(0), ZZ(0), ZZ(-5)]
+true
+
+julia> M[2] == [ZZ(1), ZZ(0), ZZ(3)]
+true
+
+julia> M[3] == [ZZ(0), ZZ(1), ZZ(-2)]
+true
+```
+"""
+function CompanionMat(f)
+    R = Nemo.base_ring(parent(f))
+    n = Nemo.degree(f)
+
+    M = [[Nemo.zero(R) for _ in 1:n] for _ in 1:n]
+    for i in 1:n-1
+        M[i+1][i] = Nemo.one(R)
+    end
+    for i in 0:n-1
+        M[i+1][n] = -Nemo.coeff(f, i)
+    end
+    return M
 end
+
+export CompanionMat
+
+end
+

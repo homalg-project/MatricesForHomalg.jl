@@ -50,16 +50,22 @@ MatricesForHomalg.HomalgRingOfIntegersInSingular(n::Int) = Singular.residue_ring
     R[s]
 
 Construct the univariate polynomial ring R[s] over the Singular integers or rationals.
+If `s` contains commas, it is split into several variable names and delegated to the
+multivariate constructor, e.g. `R["x,y"]` behaves like `R["x","y"]`.
 
 ```jldoctest
 julia> using Singular, MatricesForHomalg
 
 julia> Singular.ZZ["x"]
 Singular polynomial ring (ZZ),(x),(dp(1),C)
+
+julia> Singular.QQ["x,y"]
+Singular polynomial ring (QQ),(x,y),(dp(2),C)
 ```
 """
 function Base.getindex(R::Union{Singular.Integers, Singular.Rationals}, s::Union{Char, AbstractString, Symbol})
-    return Singular.polynomial_ring(R, [string(s)])[1]
+    names = strip.(split(string(s), ','))
+    return Singular.polynomial_ring(R, string.(names))[1]
 end
 
 """
@@ -579,6 +585,52 @@ function MatricesForHomalg.IsSymmetricMatrix(mat::Singular.smatrix)
         mat[i, j] == mat[j, i] || return false
     end
     return true
+end
+
+## DisplayStringOfHomalgMatrix for matrices over Singular polynomial rings; homalg
+## delegates Display for external rings to the CAS's own print format: entries in all
+## but the last column are padded (per column) to a uniform width and followed by a
+## comma, the last column is left unpadded, and rows are separated by ",\n".
+
+"""
+    DisplayStringOfHomalgMatrix(mat::Singular.smatrix)
+
+Return the multi-line string used to display the Singular matrix mat, matching Singular's
+own CAS-native print format as delegated to by the GAP packages RingsForHomalg and MatricesForHomalg.
+
+```jldoctest
+julia> using Singular, MatricesForHomalg
+
+julia> R, (x, y, z) = Singular.polynomial_ring(Singular.QQ, ["x", "y", "z"]);
+
+julia> mat = HomalgMatrix([[x, y, z], [x*y, y*z, z^2]], 2, 3, R);
+
+julia> print(DisplayStringOfHomalgMatrix(mat))
+x,  y,  z, 
+x*y,y*z,z^2
+```
+"""
+function MatricesForHomalg.DisplayStringOfHomalgMatrix(mat::Singular.smatrix)::String
+    r = Singular.nrows(mat)
+    c = Singular.ncols(mat)
+
+    if r == 0 || c == 0
+        return "(an empty $r x $c matrix)\n"
+    end
+
+    entries = [[string(mat[i, j]) for j in 1:c] for i in 1:r]
+    col_widths = [maximum(length(entries[i][j]) for i in 1:r) for j in 1:c]
+
+    lines = String[]
+    for i in 1:r
+        parts = [rpad(entries[i][j] * ",", col_widths[j] + 1) for j in 1:(c - 1)]
+        push!(parts, entries[i][c])
+        line = join(parts)
+        i < r && (line *= ", ")
+        push!(lines, line)
+    end
+
+    return join(lines, "\n") * "\n"
 end
 
 ## CertainRows / CertainColumns for smatrix

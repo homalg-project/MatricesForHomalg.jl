@@ -525,3 +525,36 @@ end
     AssignGeneratingVariables(Rt)
     @test isdefined(Main, :t_singular_test)
 end
+
+@testset "ViewStringOfHomalgMatrix for Singular matrices" begin
+    R, (x, y) = Singular.polynomial_ring(Singular.QQ, ["x", "y"])
+
+    mat = HomalgMatrix([[x, y], [x^2, y^2]], 2, 2, R)
+    @test ViewStringOfHomalgMatrix(mat) == "<A 2 x 2 matrix over a ring>"
+
+    idmat = HomalgIdentityMatrix(3, R)
+    @test ViewStringOfHomalgMatrix(idmat) == "<A 3 x 3 identity matrix over a ring>"
+
+    zeromat = HomalgZeroMatrix(3, 2, R)
+    @test ViewStringOfHomalgMatrix(zeromat) == "<A 3 x 2 zero matrix over a ring>"
+
+    diagmat = HomalgMatrix([[x, R(0)], [R(0), y]], 2, 2, R)
+    @test ViewStringOfHomalgMatrix(diagmat) == "<A diagonal 2 x 2 matrix over a ring>"
+end
+
+@testset "DisplayStringOfHomalgMatrix for Singular matrices" begin
+    R, (x, y, z) = Singular.polynomial_ring(Singular.QQ, ["x", "y", "z"])
+
+    mat = HomalgMatrix([[x, y, z], [x*y, y*z, z^2]], 2, 3, R)
+    @test DisplayStringOfHomalgMatrix(mat) == "x,  y,  z, \nx*y,y*z,z^2\n"
+
+    emptymat = HomalgZeroMatrix(0, 0, R)
+    @test DisplayStringOfHomalgMatrix(emptymat) == "(an empty 0 x 0 matrix)\n"
+
+    pipe = Pipe()
+    redirect_stdout(pipe) do
+        DisplayHomalgMatrix(mat)
+    end
+    close(pipe.in)
+    @test read(pipe.out, String) == DisplayStringOfHomalgMatrix(mat)
+end
